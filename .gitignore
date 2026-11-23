@@ -35,3 +35,20 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 *.log
+
+# Environment secrets
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+
+# Dependencies and build output
+**/node_modules/
+**/dist/
+**/coverage/
+
+# Local migration backups
+backend-before-groq-20261124-003238/
+backend/groq-migration-context.txt

@@ -1,3 +1,4 @@
+
 import express from 'express';
 import cors from 'cors';
 import { config } from './config/index.js';
@@ -7,17 +8,20 @@ export const app = express();
 
 // Middlewares
 app.use(cors({
-  origin: '*', // Allow frontend requests
+  origin: '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
+
 app.use(express.json({ limit: '10mb' }));
 
-// Health check root
+// Root health check
 app.get('/', (_req, res) => {
   res.json({
     name: 'Udhi Science Diagram Maker API',
     version: '1.0.0',
+    provider: 'Groq',
+    model: config.groq.model,
     endpoints: {
       health: 'GET /api/health',
       concepts: 'GET /api/concepts',
@@ -29,17 +33,21 @@ app.get('/', (_req, res) => {
   });
 });
 
-// Mount Routes
+// Mount routes
 app.use('/api', diagramRouter);
 
 // Start server when run directly
 if (process.env.NODE_ENV !== 'test') {
   app.listen(config.port, () => {
-    console.log(`=======================================================`);
-    console.log(`🚀 Udhi Science Diagram Maker Backend running on port ${config.port}`);
+    console.log('=======================================================');
+    console.log(
+      `🚀 Udhi Science Diagram Maker Backend running on port ${config.port}`
+    );
     console.log(`📡 Environment: ${config.nodeEnv}`);
-    console.log(`🤖 Gemini Model: ${config.gemini.model}`);
-    console.log(`🔑 API Key Configured: ${Boolean(process.env.GEMINI_API_KEY)}`);
-    console.log(`=======================================================`);
+    console.log(`🤖 Groq Model: ${config.groq.model}`);
+    console.log(
+      `🔑 Groq API Key Configured: ${Boolean(config.groq.apiKey)}`
+    );
+    console.log('=======================================================');
   });
 }

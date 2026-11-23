@@ -1,107 +1,225 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { GeminiService } from '../services/gemini.service.js';
 
-describe('GeminiService API Retry & Backoff Logic', () => {
-  let service: GeminiService;
+import {
+  describe,
+  it,
+  expect,
+  vi,
+  beforeEach,
+  afterEach,
+} from 'vitest';
+
+import { config } from '../config/index.js';
+import { GroqService } from '../services/gemini.service.js';
+
+describe('Groq API Retry & Backoff Logic', () => {
+  let service: GroqService;
+  let mockFetch: ReturnType<typeof vi.fn>;
+
+  const validSvg =
+    '<svg viewBox="0 0 800 600"><title>Test</title><text x="50" y="50">A</text><text x="50" y="80">B</text><text x="50" y="110">C</text><animate attributeName="opacity" dur="1s" values="0;1" /></svg>';
+
+  const successResponse = (
+    inputTokens = 150,
+    outputTokens = 220
+  ) => ({
+    ok: true,
+    json: async () => ({
+      choices: [
+        {
+          message: {
+            content: validSvg,
+          },
+        },
+      ],
+      usage: {
+        prompt_tokens: inputTokens,
+        completion_tokens: outputTokens,
+      },
+    }),
+  });
+
+  const errorResponse = (status: number, body: string) => ({
+    ok: false,
+    status,
+    text: async () => body,
+  });
 
   beforeEach(() => {
-    service = new GeminiService();
+    service = new GroqService();
+
+    mockFetch = vi.fn();
+    vi.stubGlobal('fetch', mockFetch);
+
+    // Makes retry-delay jitter deterministic during tests.
+    vi.spyOn(Math, 'random').mockReturnValue(0);
   });
 
-  it('succeeds on first attempt without retries', async () => {
-    const mockGenerateContent = vi.fn().mockResolvedValue({
-      text: '<svg viewBox="0 0 800 600"><title>Test</title><text x="50" y="50">A</text><text x="50" y="80">B</text><text x="50" y="110">C</text><animate attributeName="opacity" dur="1s" values="0;1" /></svg>',
-      usageMetadata: { promptTokenCount: 150, candidatesTokenCount: 220 },
-    });
-
-    (service as any).client = {
-      models: {
-        generateContent: mockGenerateContent,
-      },
-    };
-
-    const res = await service.callGeminiWithRetry('Generate test', 3, 10);
-    expect(res.apiRetries).toBe(0);
-    expect(res.inputTokens).toBe(150);
-    expect(res.outputTokens).toBe(220);
-    expect(mockGenerateContent).toHaveBeenCalledTimes(1);
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
   });
 
-  it('retries with exponential backoff on HTTP 429 and succeeds', async () => {
-    const mockGenerateContent = vi
-      .fn()
-      .mockRejectedValueOnce({ status: 429, message: 'Resource has been exhausted (rate limit)' })
-      .mockResolvedValueOnce({
-        text: '<svg viewBox="0 0 800 600"><title>Test</title><text x="10" y="10">1</text><text x="20" y="20">2</text><text x="30" y="30">3</text><animate attributeName="x" dur="1s" values="10;20" /></svg>',
-        usageMetadata: { promptTokenCount: 100, candidatesTokenCount: 150 },
-      });
+  it('succeeds on the first attempt without retries', async () => {
+    mockFetch.mockResolvedValueOnce(successResponse());
 
-    (service as any).client = {
-      models: {
-        generateContent: mockGenerateContent,
-      },
-    };
-
-    const res = await service.callGeminiWithRetry('Generate rate limit test', 3, 10);
-    expect(res.apiRetries).toBe(1);
-    expect(mockGenerateContent).toHaveBeenCalledTimes(2);
-  });
-
-  it('retries with exponential backoff on HTTP 503 twice and succeeds on 3rd attempt', async () => {
-    const mockGenerateContent = vi
-      .fn()
-      .mockRejectedValueOnce({ status: 503, message: 'The model is overloaded. Please try again later.' })
-      .mockRejectedValueOnce({ status: 503, message: 'Service Unavailable' })
-      .mockResolvedValueOnce({
-        text: '<svg viewBox="0 0 800 600"><title>Test</title><text x="10" y="10">1</text><text x="20" y="20">2</text><text x="30" y="30">3</text><animate attributeName="x" dur="1s" values="10;20" /></svg>',
-        usageMetadata: { promptTokenCount: 100, candidatesTokenCount: 150 },
-      });
-
-    (service as any).client = {
-      models: {
-        generateContent: mockGenerateContent,
-      },
-    };
-
-    const res = await service.callGeminiWithRetry('Generate 503 test', 3, 10);
-    expect(res.apiRetries).toBe(2);
-    expect(mockGenerateContent).toHaveBeenCalledTimes(3);
-  });
-
-  it('throws and stops after exceeding max 3 retries on persistent 429', async () => {
-    const mockGenerateContent = vi.fn().mockRejectedValue({
-      status: 429,
-      message: 'Rate limit exceeded continuously',
-    });
-
-    (service as any).client = {
-      models: {
-        generateContent: mockGenerateContent,
-      },
-    };
-
-    await expect(service.callGeminiWithRetry('Exhaust test', 3, 5)).rejects.toThrow(
-      /Gemini API rate limit exceeded/
+    const result = await service.callGeminiWithRetry(
+      'Generate test',
+      3,
+      10
     );
-    // Initial attempt (1) + 3 retries = 4 total calls
-    expect(mockGenerateContent).toHaveBeenCalledTimes(4);
+
+    expect(result.apiRetries).toBe(0);
+    expect(result.inputTokens).toBe(150);
+    expect(result.outputTokens).toBe(220);
+    expect(result.text).toMatch(/<svg(?:\s|>)/);
+    expect(mockFetch).toHaveBeenCalledTimes(1);
   });
 
-  it('fails immediately without retrying on non-retryable 400 Bad Request error', async () => {
-    const mockGenerateContent = vi.fn().mockRejectedValue({
-      status: 400,
-      message: 'API_KEY_INVALID: API key not valid.',
+  it('sends a Groq Chat Completions request with Bearer authentication', async () => {
+    mockFetch.mockResolvedValueOnce(successResponse());
+
+    await service.callGeminiWithRetry('Generate test', 3, 10);
+
+    const [url, options] = mockFetch.mock.calls[0];
+
+    expect(url).toBe(config.groq.endpoint);
+    expect(options.method).toBe('POST');
+    expect(options.headers.Authorization).toMatch(/^Bearer /);
+    expect(options.headers['Content-Type']).toBe('application/json');
+
+    const requestBody = JSON.parse(options.body);
+
+    // Verify the configured model is the intended Groq model.
+    expect(config.groq.model).toBe('openai/gpt-oss-20b');
+    expect(requestBody.model).toBe(config.groq.model);
+
+    expect(requestBody.messages).toHaveLength(2);
+    expect(requestBody.messages[0].role).toBe('system');
+    expect(requestBody.messages[1].role).toBe('user');
+    expect(requestBody.stream).toBe(false);
+  });
+
+  it('retries after HTTP 429 and succeeds on the next attempt', async () => {
+    mockFetch
+      .mockResolvedValueOnce(
+        errorResponse(429, 'Rate limit exceeded')
+      )
+      .mockResolvedValueOnce(successResponse(100, 150));
+
+    const result = await service.callGeminiWithRetry(
+      'Generate rate limit test',
+      3,
+      10
+    );
+
+    expect(result.apiRetries).toBe(1);
+    expect(result.inputTokens).toBe(100);
+    expect(result.outputTokens).toBe(150);
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+  });
+
+  it('retries after HTTP 503 twice and succeeds on the third attempt', async () => {
+    mockFetch
+      .mockResolvedValueOnce(
+        errorResponse(503, 'Service unavailable')
+      )
+      .mockResolvedValueOnce(
+        errorResponse(503, 'Model temporarily overloaded')
+      )
+      .mockResolvedValueOnce(successResponse(100, 150));
+
+    const result = await service.callGeminiWithRetry(
+      'Generate 503 test',
+      3,
+      10
+    );
+
+    expect(result.apiRetries).toBe(2);
+    expect(result.inputTokens).toBe(100);
+    expect(result.outputTokens).toBe(150);
+    expect(mockFetch).toHaveBeenCalledTimes(3);
+  });
+
+  it('stops after three retries when HTTP 429 persists', async () => {
+    mockFetch.mockResolvedValue(
+      errorResponse(429, 'Rate limit exceeded continuously')
+    );
+
+    await expect(
+      service.callGeminiWithRetry('Exhaust test', 3, 5)
+    ).rejects.toThrow(/Groq API rate limit exceeded/);
+
+    // Initial request + three retries = four requests.
+    expect(mockFetch).toHaveBeenCalledTimes(4);
+  });
+
+  it('stops after three retries when HTTP 503 persists', async () => {
+    mockFetch.mockResolvedValue(
+      errorResponse(503, 'Service unavailable continuously')
+    );
+
+    await expect(
+      service.callGeminiWithRetry('Exhaust 503 test', 3, 5)
+    ).rejects.toThrow(/Groq API service unavailable/);
+
+    expect(mockFetch).toHaveBeenCalledTimes(4);
+  });
+
+  it('fails immediately on a non-retryable HTTP 400 error', async () => {
+    mockFetch.mockResolvedValueOnce(
+      errorResponse(400, 'API_KEY_INVALID: Invalid API key')
+    );
+
+    await expect(
+      service.callGeminiWithRetry('Bad request test', 3, 5)
+    ).rejects.toThrow(/API_KEY_INVALID/);
+
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('rejects a successful HTTP response with missing token usage', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        choices: [
+          {
+            message: {
+              content: validSvg,
+            },
+          },
+        ],
+      }),
     });
 
-    (service as any).client = {
-      models: {
-        generateContent: mockGenerateContent,
-      },
-    };
+    await expect(
+      service.callGeminiWithRetry('Missing usage test', 3, 5)
+    ).rejects.toThrow(/valid token usage information/);
 
-    await expect(service.callGeminiWithRetry('Bad request test', 3, 5)).rejects.toThrow(
-      /API_KEY_INVALID/
-    );
-    expect(mockGenerateContent).toHaveBeenCalledTimes(1);
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('rejects a successful HTTP response with empty model output', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        choices: [
+          {
+            message: {
+              content: '',
+            },
+          },
+        ],
+        usage: {
+          prompt_tokens: 100,
+          completion_tokens: 0,
+        },
+      }),
+    });
+
+    await expect(
+      service.callGeminiWithRetry('Empty output test', 3, 5)
+    ).rejects.toThrow(/did not contain SVG text/);
+
+    expect(mockFetch).toHaveBeenCalledTimes(1);
   });
 });
