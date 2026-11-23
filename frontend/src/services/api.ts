@@ -5,7 +5,9 @@ import {
   ReviewStatus,
 } from '../types/index.js';
 
-const API_BASE = '/api';
+const API_BASE = (
+  import.meta.env.VITE_API_BASE_URL || '/api'
+).replace(/\/$/, '');
 
 export interface HealthResponse {
   status: string;
@@ -99,8 +101,7 @@ export const apiService = {
       );
     }
 
-    // The Groq API key remains on the backend.
-    // Never send API keys from the browser.
+    // The Groq API key remains securely on the backend.
     const res = await fetch(`${API_BASE}/generate`, {
       method: 'POST',
       headers: {
