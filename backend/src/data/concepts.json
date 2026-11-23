@@ -1,0 +1,42 @@
+[
+  {
+    "id": "pythagoras-theorem",
+    "number": 1,
+    "name": "Pythagoras' theorem",
+    "subject": "Maths",
+    "prompt": "In a right-angled triangle, the longest side is called the hypotenuse. The square of the hypotenuse is equal to the sum of the squares of the other two sides: a² + b² = c².",
+    "description": "Educational visualization of a right triangle with labelled sides a, b, and hypotenuse c, geometric square projections on each side showing a² + b² = c², and animated proof highlight."
+  },
+  {
+    "id": "parts-of-a-circle",
+    "number": 2,
+    "name": "Parts of a circle",
+    "subject": "Maths",
+    "prompt": "A circle has a centre. The radius is the distance from the centre to the edge. The diameter goes across the circle through the centre and is twice the radius. The circumference is the distance around the circle.",
+    "description": "Interactive circle geometry displaying the center point, animated radius sweep, full diameter chord, and glowing animated perimeter circumference with explicit educational labels."
+  },
+  {
+    "id": "series-circuit",
+    "number": 3,
+    "name": "Series circuit",
+    "subject": "Physics",
+    "prompt": "In a series circuit there is only one loop. The current is the same everywhere in the loop. The voltage of the cell is shared between the components.",
+    "description": "Schematic of a single-loop series circuit featuring a DC cell/battery, two lamps/resistors with shared voltage labels (V1, V2), switch, and flowing electron current animation along the loop."
+  },
+  {
+    "id": "photosynthesis",
+    "number": 4,
+    "name": "Photosynthesis",
+    "subject": "Biology",
+    "prompt": "Plants take in carbon dioxide and water. They use light energy, absorbed by chlorophyll, to make glucose and oxygen.",
+    "description": "Botanical diagram of a leaf cross-section showing sunlight absorption by green chlorophyll, inputs of CO₂ and H₂O from soil/air, and animated output arrows producing glucose (C₆H₁₂O₆) and O₂."
+  },
+  {
+    "id": "states-of-matter",
+    "number": 5,
+    "name": "States of matter",
+    "subject": "Chemistry",
+    "prompt": "In a solid the particles are close together and vibrate in place. In a liquid they are close but move past each other. In a gas they are far apart and move fast.",
+    "description": "Three side-by-side comparison chambers showing particle arrangement and kinetic behavior: tightly packed vibrating solids, tumbling liquid particles, and high-velocity bouncing gas particles."
+  }
+]
