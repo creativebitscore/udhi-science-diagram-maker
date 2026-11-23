@@ -2,8 +2,7 @@
   "name": "udhi-science-diagram-maker-backend",
   "version": "1.0.0",
   "type": "module",
-  "description": "Backend API for Udhi Science Diagram Maker with Gemini SVG generation & validation",
-  "main": "dist/server.js",
+"description": "Backend API for Udhi Science Diagram Maker with Groq-powered SVG generation and programmatic validation",  "main": "dist/server.js",
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
@@ -13,13 +12,11 @@
     "generate-initial": "tsx src/scripts/generate-initial.ts"
   },
   "dependencies": {
-    "@google/genai": "^3.6.1",
-    "@google/generative-ai": "^0.24.1",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
-    "fast-xml-parser": "^4.5.3",
-    "zod": "^3.24.2"
+    "fast-xml-parser": "^5.12.1",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",
@@ -29,6 +26,6 @@
     "supertest": "^7.0.0",
     "tsx": "^4.19.3",
     "typescript": "^5.7.3",
-    "vitest": "^3.0.7"
+    "vitest": "^5.1.1"
   }
 }
