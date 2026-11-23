@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Sparkles, Loader2, AlertCircle, ArrowRight } from 'lucide-react';
 import { ConceptDefinition, DiagramResult } from '../types/index.js';
 import { apiService, ApiError } from '../services/api.js';
@@ -22,18 +22,46 @@ export const LiveGeneratorModal: React.FC<LiveGeneratorModalProps> = ({
   apiKey,
   onOpenApiKeyModal,
 }) => {
-  const [conceptId, setConceptId] = useState(selectedConceptId || concepts[0]?.id || '');
+  const [conceptId, setConceptId] = useState<string>(
+    selectedConceptId || (concepts.length > 0 ? concepts[0].id : '')
+  );
   const [customPrompt, setCustomPrompt] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [currentStep, setCurrentStep] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
   const [apiRetriesLogged, setApiRetriesLogged] = useState<number>(0);
 
+  // Synchronize conceptId when modal is opened or when selectedConceptId / concepts change
+  useEffect(() => {
+    if (isOpen) {
+      if (selectedConceptId && concepts.some((c) => c.id === selectedConceptId)) {
+        setConceptId(selectedConceptId);
+      } else if (concepts.length > 0 && (!conceptId || !concepts.some((c) => c.id === conceptId))) {
+        setConceptId(concepts[0].id);
+      }
+      setError(null);
+    }
+  }, [isOpen, selectedConceptId, concepts]);
+
   if (!isOpen) return null;
 
-  const currentConcept = concepts.find((c) => c.id === conceptId) || concepts[0];
+  // Resolve safe fallback concept ID
+  const effectiveConceptId =
+    (conceptId && concepts.some((c) => c.id === conceptId))
+      ? conceptId
+      : (selectedConceptId && concepts.some((c) => c.id === selectedConceptId))
+        ? selectedConceptId
+        : concepts[0]?.id || '';
+
+  const currentConcept = concepts.find((c) => c.id === effectiveConceptId) || concepts[0];
 
   const handleGenerate = async () => {
+    const targetConceptId = effectiveConceptId;
+    if (!targetConceptId) {
+      setError('Please select a valid science concept before generating.');
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
     setApiRetriesLogged(0);
@@ -45,7 +73,7 @@ export const LiveGeneratorModal: React.FC<LiveGeneratorModalProps> = ({
         setCurrentStep('Validating SVG: XML, bounds, labels & animations...');
       }, 1500);
 
-      const result = await apiService.generateDiagram(conceptId, customPrompt, apiKey);
+      const result = await apiService.generateDiagram(targetConceptId, customPrompt, apiKey);
       setCurrentStep('Complete! Rendering validated SVG...');
       onDiagramGenerated(result);
       setTimeout(() => {
@@ -98,7 +126,7 @@ export const LiveGeneratorModal: React.FC<LiveGeneratorModalProps> = ({
               Target Concept
             </label>
             <select
-              value={conceptId}
+              value={effectiveConceptId}
               onChange={(e) => setConceptId(e.target.value)}
               disabled={isLoading}
               className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm font-medium bg-white focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 disabled:bg-slate-100"

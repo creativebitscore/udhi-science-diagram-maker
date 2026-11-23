@@ -46,13 +46,18 @@ export const apiService = {
     customPrompt?: string,
     apiKey?: string
   ): Promise<DiagramResult> {
+    const trimmedId = conceptId?.trim();
+    if (!trimmedId) {
+      throw new ApiError('A valid concept ID is required before requesting diagram generation.', 400);
+    }
+
     const res = await fetch(`${API_BASE}/generate`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        conceptId,
+        conceptId: trimmedId,
         customPrompt: customPrompt?.trim() || undefined,
         apiKey: apiKey?.trim() || undefined,
       }),

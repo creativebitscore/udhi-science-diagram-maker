@@ -86,7 +86,10 @@ diagramRouter.post('/validate', (req: Request, res: Response) => {
 });
 
 const generateSchema = z.object({
-  conceptId: z.string(),
+  conceptId: z.string({
+    required_error: 'conceptId is required',
+    invalid_type_error: 'conceptId must be a string',
+  }).trim().min(1, 'conceptId cannot be empty'),
   customPrompt: z.string().optional(),
   apiKey: z.string().optional(),
 });
@@ -98,9 +101,10 @@ const generateSchema = z.object({
 diagramRouter.post('/generate', async (req: Request, res: Response) => {
   const parseResult = generateSchema.safeParse(req.body);
   if (!parseResult.success) {
+    const errorDetails = parseResult.error.issues.map((i) => i.message).join('; ');
     return res.status(400).json({
       success: false,
-      error: 'Invalid request payload: ' + parseResult.error.issues.map((i) => i.message).join(', '),
+      error: `Invalid request payload: ${errorDetails}`,
     });
   }
 
@@ -110,9 +114,10 @@ diagramRouter.post('/generate', async (req: Request, res: Response) => {
   const concepts = getConcepts();
   const concept = concepts.find((c) => c.id === conceptId);
   if (!concept) {
-    return res.status(404).json({
+    const availableIds = concepts.map((c) => c.id).join(', ');
+    return res.status(400).json({
       success: false,
-      error: `Concept with ID "${conceptId}" not found.`,
+      error: `Invalid concept ID "${conceptId}". Valid concept IDs are: ${availableIds}`,
     });
   }
 

@@ -65,6 +65,9 @@ export const App: React.FC = () => {
 
       setConcepts(fetchedConcepts);
       setDiagrams(fetchedDiagrams);
+      if (fetchedConcepts.length > 0) {
+        setGeneratorConceptId((prev) => prev || fetchedConcepts[0].id);
+      }
 
       // Merge backend reviews if frontend has no local decision yet
       const currentReviews = storageService.getReviews();
@@ -216,7 +219,7 @@ export const App: React.FC = () => {
           <div className="flex items-center gap-2.5 shrink-0">
             <button
               onClick={() => {
-                setGeneratorConceptId(concepts[0]?.id || '');
+                setGeneratorConceptId(concepts[0]?.id || 'pythagoras-theorem');
                 setIsGeneratorModalOpen(true);
               }}
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-bold text-xs shadow-md transition"
@@ -303,15 +306,17 @@ export const App: React.FC = () => {
         currentKey={apiKey}
       />
 
-      <LiveGeneratorModal
-        isOpen={isGeneratorModalOpen}
-        onClose={() => setIsGeneratorModalOpen(false)}
-        concepts={concepts}
-        selectedConceptId={generatorConceptId}
-        onDiagramGenerated={handleDiagramGenerated}
-        apiKey={apiKey}
-        onOpenApiKeyModal={() => setIsApiKeyModalOpen(true)}
-      />
+      {isGeneratorModalOpen && (
+        <LiveGeneratorModal
+          isOpen={isGeneratorModalOpen}
+          onClose={() => setIsGeneratorModalOpen(false)}
+          concepts={concepts}
+          selectedConceptId={generatorConceptId || concepts[0]?.id || 'pythagoras-theorem'}
+          onDiagramGenerated={handleDiagramGenerated}
+          apiKey={apiKey}
+          onOpenApiKeyModal={() => setIsApiKeyModalOpen(true)}
+        />
+      )}
     </div>
   );
 };
