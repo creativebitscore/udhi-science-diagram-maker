@@ -214,3 +214,9 @@ In accordance with Udhi Technologies' guidelines for ethical, transparent AI usa
 
 - **Frontend**: Configured for Vercel with SPA routing and API reverse-proxy in `vercel.json`.
 - **Backend**: Configured for Render via `render.yaml` with production build scripts.
+
+**Candidate:** Aparna Bhadoriya
+**Portfolio:** [portfolio-omega-rosy-66.vercel.app](https://portfolio-omega-rosy-66.vercel.app/)
+**LinkedIn:** [linkedin.com/in/aparna-bhadoriya-580121381](https://www.linkedin.com/in/aparna-bhadoriya-580121381)
+
+---
